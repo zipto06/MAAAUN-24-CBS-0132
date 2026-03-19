@@ -1,23 +1,26 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, request, jsonify
+from models import Patient, Queue
 
 app = Flask(__name__)
+patient_queue = Queue()
 
-# Sample data to simulate a waiting list
-waiting_list = []
+@app.route('/')
+def home():
+    return "Welcome to the Patient Queue Management System!"
 
-@app.route('/waiting_list')
-def waiting_list_view():
-    count = len(waiting_list)
-    return render_template('waiting_list.html', count=count, waiting_list=waiting_list)
-
-@app.route('/register', methods=['GET', 'POST'])
+@app.route('/register', methods=['POST'])
 def register_patient():
-    if request.method == 'POST':
-        patient_name = request.form.get('patient_name')
-        if patient_name:
-            waiting_list.append(patient_name)
-            return redirect(url_for('waiting_list_view'))
-    return render_template('register.html')
+    data = request.form
+    patient = Patient(name=data['name'], age=data['age'], condition=data['condition'])
+    patient_queue.enqueue(patient)
+    return jsonify({"message": "Patient registered successfully!"}), 201
+
+@app.route('/serve_patient', methods=['GET'])
+def serve_patient():
+    if patient_queue.is_empty():
+        return jsonify({"message": "No patients in the queue."}), 404
+    patient = patient_queue.dequeue()
+    return jsonify({"name": patient.name, "age": patient.age, "condition": patient.condition})
 
 if __name__ == '__main__':
     app.run(debug=True)
